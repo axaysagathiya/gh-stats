@@ -1,0 +1,56 @@
+name: 'GitHub Contribution Stats Action'
+description: 'Fetches, caches, and updates GitHub pull request contribution statistics in a README.md file.'
+author: 'Axay Sagathiya'
+branding:
+  icon: 'bar-chart-2'
+  color: 'blue'
+
+inputs:
+  username:
+    description: 'GitHub username to fetch stats for (defaults to the repository owner)'
+    required: false
+    default: ${{ github.repository_owner }}
+  token:
+    description: 'GitHub Personal Access Token (classic) with repo scope'
+    required: true
+  readme_path:
+    description: 'Path to the target README.md file to update'
+    required: false
+    default: 'README.md'
+  force:
+    description: 'Force a full history scan, bypassing the cache'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Run Stats Tracker
+      shell: bash
+      env:
+        GH_STATS_TOKEN: ${{ inputs.token }}
+      run: |
+        FLAGS=""
+        if [ "${{ inputs.force }}" = "true" ]; then
+          FLAGS="-f"
+        fi
+        
+        # Run using the checked-out code of this Action
+        go run ${{ github.action_path }}/main.go $FLAGS --readme "${{ inputs.readme_path }}" "${{ inputs.username }}"
+
+    - name: Commit and Push changes
+      shell: bash
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        
+        # Stage the updated README and the unique GOB cache file
+        git add "${{ inputs.readme_path }}" "github_cache_${{ inputs.username }}.gob" || true
+        
+        git commit -m "docs: auto-update contribution statistics [skip ci]" || echo "No changes to commit"
+        git push

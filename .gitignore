@@ -1,0 +1,9 @@
+# Compiled binaries
+main
+main.exe
+
+# Local cache files
+github_cache_*.gob
+
+# Environment files
+.env
